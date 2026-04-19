@@ -1,0 +1,113 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c86f23d8-327c-46cd-a82e-5acf45a21e5a",
+      "name": "When chat message received",
+      "webhookId": "6067baea-6f5a-4e2c-b548-5d89a9b81888"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Kamu adalah agen AI yang mempromosikan Sirull Academy. berikan informasi mengenai sirull academy dengan memaparkan program dan keunggulan. jika ada hal yang tidak kamu ketahui jangan sungkan untuk meminta maaf dan sarankan untuk mengunjungi web www.sirullacademy.co.id"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "bd8d0397-edec-4a42-8411-917e9d1568f1",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        208,
+        240
+      ],
+      "id": "0ac5c16d-becb-419c-bb96-1e15ccfe8cfd",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KjXevPUhwDnddKsC",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        304,
+        240
+      ],
+      "id": "c645dd48-4b1e-4bf8-a100-63d31a5ec59c",
+      "name": "Simple Memory"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "9b016bd6-382e-4558-a91d-6e14c6858cf5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "63d461c04c21518a91fab75054d0efc4571b7f5696b8b74cb60d888c2470cb15"
+  },
+  "id": "PamUcepF2aZfHKpb",
+  "tags": []
+}

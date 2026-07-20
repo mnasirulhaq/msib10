@@ -1,0 +1,491 @@
+{
+  "name": "Sistem Evaluasi Kandidat Interview Berbasis AI",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -448,
+        -16
+      ],
+      "id": "99d39d35-6462-448f-8cd2-c9654a07afd7",
+      "name": "Receive Interview Notes",
+      "webhookId": "9fa86e4e-44f7-4d65-bf4d-f80e026cccc3",
+      "credentials": {
+        "telegramApi": {
+          "id": "XLquEbkBuvEgX7o6",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "39f5e85e-a451-489d-af3e-fa2d6cb8a52f",
+              "name": "interview_notes",
+              "value": "={{$json.message.text}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -208,
+        -16
+      ],
+      "id": "ceddeec7-eda9-41f8-9bee-7476ca41c734",
+      "name": "Extract Interview Message"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{$json.interview_notes}}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Kamu adalah Senior Technical Recruiter profesional yang ahli menganalisis hasil interview kandidat kerja.\n\nTugasmu adalah membaca catatan interview yang berantakan lalu mengubahnya menjadi evaluasi kandidat yang objektif dan profesional.\n\nAturan:\n\n1. Ekstrak nama kandidat.\n2. Ekstrak posisi yang dilamar.\n3. Berikan skor_teknis dari 1-100.\n4. Berikan skor_komunikasi dari 1-100.\n5. Analisis kelebihan kandidat secara spesifik.\n6. Analisis kekurangan kandidat secara spesifik.\n7. Ekstrak ekspektasi gaji kandidat dalam format angka tanpa simbol rupiah.\n8. Berikan rekomendasi_final:\n\n* Lolos\n* Cadangan\n* Tolak\n\nWAJIB:\n\n* Output hanya JSON valid.\n* Jangan memberi penjelasan tambahan.\n* Jangan menggunakan markdown.\n* Jangan menggunakan kata pembuka atau penutup.\n* Jangan menggunakan format markdown code block.\n* Pastikan skor berupa angka.\n* Pastikan catatan_gaji berupa angka integer.\n\nFormat JSON:\n{\n\"nama_kandidat\": \"\",\n\"posisi\": \"\",\n\"skor_teknis\": 0,\n\"skor_komunikasi\": 0,\n\"analisis_kelebihan\": \"\",\n\"analisis_kekurangan\": \"\",\n\"rekomendasi_final\": \"\",\n\"catatan_gaji\": 0\n}\n\n"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        32,
+        -16
+      ],
+      "id": "5c22e594-3d82-47bf-856f-6d64b61f9069",
+      "name": "AI Candidate Evaluation"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"nama_kandidat\": \"string\",\n  \"posisi\": \"string\",\n  \"skor_teknis\": \"number\",\n  \"skor_komunikasi\": \"number\",\n  \"analisis_kelebihan\": \"string\",\n  \"analisis_kekurangan\": \"string\",\n  \"rekomendasi_final\": \"string\",\n  \"catatan_gaji\": \"number\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        176,
+        208
+      ],
+      "id": "6ecbf70e-5469-45f7-a4e3-4422eb2e0efb",
+      "name": "Parse JSON Output"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {
+          "maxTokensToSample": 800,
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        32,
+        320
+      ],
+      "id": "cb9cd103-cc18-4456-8d61-12873340edea",
+      "name": " Groq AI Model",
+      "credentials": {
+        "groqApi": {
+          "id": "6pR1p9fCJ7XyAd7l",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n\nconst data = $json.output;\n\n// Validasi nama kandidat kosong\nif (!data.nama_kandidat || data.nama_kandidat.trim() === \"\") {\n  throw new Error(\n    \"Informasi kandidat tidak lengkap\"\n  );\n}\n\n// Validasi posisi kosong\nif (!data.posisi || data.posisi.trim() === \"\") {\n  throw new Error(\n    \"Informasi kandidat tidak lengkap\"\n  );\n}\n\n// Validasi placeholder AI\nconst invalidValues = [\n  \"Tidak disebutkan\",\n  \"Unknown\",\n  \"N/A\",\n  \"-\"\n];\n\nif (\n  invalidValues.includes(data.nama_kandidat) ||\n  invalidValues.includes(data.posisi)\n) {\n  throw new Error(\n    \"Informasi kandidat tidak valid atau tidak lengkap\"\n  );\n}\n\n// Convert skor ke number\ndata.skor_teknis =\nparseInt(data.skor_teknis);\n\ndata.skor_komunikasi =\nparseInt(data.skor_komunikasi);\n\n// Validasi skor teknis\nif (isNaN(data.skor_teknis)) {\n  throw new Error(\n    \"Skor teknis kandidat tidak valid\"\n  );\n}\n\n// Validasi skor komunikasi\nif (isNaN(data.skor_komunikasi)) {\n  throw new Error(\n    \"Skor komunikasi kandidat tidak valid\"\n  );\n}\n\n// Validasi range skor\nif (\n  data.skor_teknis < 0 ||\n  data.skor_teknis > 100\n) {\n  throw new Error(\n    \"Skor teknis harus berada di antara 0-100\"\n  );\n}\n\nif (\n  data.skor_komunikasi < 0 ||\n  data.skor_komunikasi > 100\n) {\n  throw new Error(\n    \"Skor komunikasi harus berada di antara 0-100\"\n  );\n}\n\n// Validasi skor default AI\nif (\n  data.skor_teknis === 50 &&\n  data.skor_komunikasi === 50\n) {\n  throw new Error(\n    \"AI gagal menghasilkan evaluasi kandidat yang valid\"\n  );\n}\n\n// Validasi rekomendasi AI\nconst validRecommendation = [\n  \"Lolos\",\n  \"Cadangan\",\n  \"Tolak\"\n];\n\nif (\n  !validRecommendation.includes(\n    data.rekomendasi_final\n  )\n) {\n  throw new Error(\n    \"Rekomendasi AI tidak valid\"\n  );\n}\n\n// Validasi gaji\ndata.catatan_gaji =\nparseInt(data.catatan_gaji);\n\nif (isNaN(data.catatan_gaji)) {\n  throw new Error(\n    \"Ekspektasi gaji kandidat tidak valid\"\n  );\n}\n\nif (data.catatan_gaji <= 0) {\n  throw new Error(\n    \"Ekspektasi gaji kandidat tidak valid\"\n  );\n}\n\n// Fallback kelebihan\nif (\n  !data.analisis_kelebihan ||\n  data.analisis_kelebihan.trim() === \"\"\n) {\n  data.analisis_kelebihan =\n    \"Tidak ada kelebihan yang signifikan\";\n}\n\n// Fallback kekurangan\nif (\n  !data.analisis_kekurangan ||\n  data.analisis_kekurangan.trim() === \"\"\n) {\n  data.analisis_kekurangan =\n    \"Tidak ada kekurangan yang signifikan\";\n}\n\n// Hitung overall score\nconst overall =\nMath.round(\n  (data.skor_teknis * 0.6) +\n  (data.skor_komunikasi * 0.4)\n);\n\n// Format salary Indonesia\nconst formatted_salary =\nnew Intl.NumberFormat(\"id-ID\")\n.format(data.catatan_gaji);\n\n// Status emoji dari AI recommendation\nlet status_emoji = \"\";\n\nif (\n  data.rekomendasi_final === \"Lolos\"\n) {\n  status_emoji = \"🟢\";\n} else if (\n  data.rekomendasi_final === \"Cadangan\"\n) {\n  status_emoji = \"🟡\";\n} else {\n  status_emoji = \"🔴\";\n}\n\n// Return sukses\nreturn [{\n  json: {\n\n    success: true,\n\n    ...data,\n\n    overall_score: overall,\n\n    formatted_salary,\n\n    status_emoji\n\n  }\n}];\n\n} catch(error) {\n\nreturn [{\n  json: {\n\n    success: false,\n\n    error_message: error.message\n\n  }\n}];\n\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        -16
+      ],
+      "id": "68aa20c4-9fe0-4e1f-88e7-b96c32fcc417",
+      "name": "HR Evaluation Engine"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d3714dbd-d838-4a0d-9f9c-a502fbbc625e",
+              "leftValue": "={{$json.success}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        640,
+        -16
+      ],
+      "id": "17672ce6-71ff-457c-b762-fff49b3e35ce",
+      "name": "Validation Check"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appZnQS5O7RmqMLRS",
+          "mode": "list",
+          "cachedResultName": "Candidate Evaluation",
+          "cachedResultUrl": "https://airtable.com/appZnQS5O7RmqMLRS"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblf2vuclSXFQPsc5",
+          "mode": "list",
+          "cachedResultName": "Interview Results",
+          "cachedResultUrl": "https://airtable.com/appZnQS5O7RmqMLRS/tblf2vuclSXFQPsc5"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "nama_kandidat": "={{$json.nama_kandidat}}",
+            "posisi": "={{$json.posisi}}",
+            "skor_teknis": "={{$json.skor_teknis}}",
+            "skor_komunikasi": "={{$json.skor_komunikasi}}",
+            "analisis_kelebihan": "={{$json.analisis_kelebihan}}",
+            "analisis_kekurangan": "={{$json.analisis_kekurangan}}",
+            "catatan_gaji": "={{$json.catatan_gaji}}",
+            "rekomendasi_final": "={{$json.rekomendasi_final}}",
+            "overall_score": "={{$json.overall_score}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "nama_kandidat",
+              "displayName": "nama_kandidat",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "posisi",
+              "displayName": "posisi",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "skor_teknis",
+              "displayName": "skor_teknis",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "skor_komunikasi",
+              "displayName": "skor_komunikasi",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "analisis_kelebihan",
+              "displayName": "analisis_kelebihan",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "analisis_kekurangan",
+              "displayName": "analisis_kekurangan",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "rekomendasi_final",
+              "displayName": "rekomendasi_final",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Lolos",
+                  "value": "Lolos"
+                },
+                {
+                  "name": "Cadangan",
+                  "value": "Cadangan"
+                },
+                {
+                  "name": "Tolak",
+                  "value": "Tolak"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "catatan_gaji",
+              "displayName": "catatan_gaji",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "overall_score",
+              "displayName": "overall_score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        912,
+        -32
+      ],
+      "id": "d092d094-90c3-463f-99cc-49af5e79f7b3",
+      "name": "Save to Airtable",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "tXujQHAuKOOkZee0",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Receive Interview Notes\"].json.message.chat.id}}",
+        "text": "=📋 <b>HASIL EVALUASI KANDIDAT</b>\n━━━━━━━━━━━━━━━\n\n👤 <b>Nama Kandidat</b> : {{$json.fields.nama_kandidat}}\n💼 <b>Posisi Dilamar</b> : {{$json.fields.posisi}}\n💰 <b>Ekspektasi Gaji</b> : Rp {{ $('Validation Check').item.json.formatted_salary }}\n\n━━━━━━━━━━━━━━━\n\n📊 HASIL PENILAIAN\n\n🧠 <b>Skor Teknis</b> : {{$json.fields.skor_teknis}}\n🗣️ <b>Skor Komunikasi</b> : {{$json.fields.skor_komunikasi}}\n⭐ <b>Overall Score</b> : {{$json.fields.overall_score}}\n\n━━━━━━━━━━━━━━━\n\n✅ <b>Kelebihan</b>\n{{$json.fields.analisis_kelebihan}}\n\n⚠️ <b>Kekurangan</b>\n{{$json.fields.analisis_kekurangan}}\n\n━━━━━━━━━━━━━━━\n\n📝 <b>Rekomendasi Akhir</b> : {{$json.fields.rekomendasi_final}}\n\n━━━━━━━━━━━━━━━\n✅ Data berhasil disimpan ke Airtable ",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1168,
+        -32
+      ],
+      "id": "d35c182f-f7c6-483f-9c31-a1d91738b07e",
+      "name": "Success Notification",
+      "webhookId": "9a14ebc4-6128-4de3-9b63-9c1c3aa2a46e",
+      "credentials": {
+        "telegramApi": {
+          "id": "XLquEbkBuvEgX7o6",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Receive Interview Notes\"].json.message.chat.id}}",
+        "text": "=❌ <b>EVALUASI KANDIDAT GAGAL DIPROSES</b>\n━━━━━━━━━━━━━━━\n\n⚠️ Sistem tidak dapat memvalidasi hasil interview kandidat.\n📌 Detail Error : <b> {{$json.error_message}} </b>\n\n<b>Kemungkinan Penyebab:</b>\n  •  Informasi kandidat tidak lengkap\n  •  Posisi tidak disebutkan\n  •  Ekspektasi gaji tidak valid\n  •  AI menghasilkan data placeholder/default\n\n━━━━━━━━━━━━━━━\nSilakan kirim ulang catatan interview dengan informasi yang lebih jelas dan lengkap.",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        912,
+        208
+      ],
+      "id": "6ff20d4e-0a9e-4389-838e-a22968eebc74",
+      "name": "Error Notification",
+      "webhookId": "6ed68084-c513-4276-935f-94af88d6c940",
+      "credentials": {
+        "telegramApi": {
+          "id": "XLquEbkBuvEgX7o6",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Receive Interview Notes": {
+      "main": [
+        [
+          {
+            "node": "Extract Interview Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Interview Message": {
+      "main": [
+        [
+          {
+            "node": "AI Candidate Evaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Candidate Evaluation": {
+      "main": [
+        [
+          {
+            "node": "HR Evaluation Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse JSON Output": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Candidate Evaluation",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    " Groq AI Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Candidate Evaluation",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HR Evaluation Engine": {
+      "main": [
+        [
+          {
+            "node": "Validation Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation Check": {
+      "main": [
+        [
+          {
+            "node": "Save to Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Airtable": {
+      "main": [
+        [
+          {
+            "node": "Success Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "1136d65f-d9a9-4bd9-833e-435f07661790",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c4db844234ed7088d85f516ff7af724af8898b188443705197ea35f16be09c52"
+  },
+  "id": "BhQNjb6H7BZMds49",
+  "tags": []
+}
